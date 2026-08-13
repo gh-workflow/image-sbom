@@ -45,12 +45,12 @@ Run this after the image has been pushed:
 
 ## Inputs
 
-| Name | Required | Default | Description |
-| --- | --- | --- | --- |
-| `image` | Yes | | Image reference to scan and attest. Prefer an immutable digest reference. |
-| `registry-username` | No | | Registry username used by Syft and Cosign for image registry access. |
-| `registry-password` | No | | Registry password or token used by Syft and Cosign for image registry access. |
-| `format` | No | `spdx-json` | SBOM format to generate. Supported values are `spdx-json` and `cyclonedx-json`. |
+| Name                | Required | Default     | Description                                                                     |
+|---------------------|----------|-------------|---------------------------------------------------------------------------------|
+| `image`             | Yes      |             | Image reference to scan and attest. Prefer an immutable digest reference.       |
+| `registry-username` | No       |             | Registry username used by Syft and Cosign for image registry access.            |
+| `registry-password` | No       |             | Registry password or token used by Syft and Cosign for image registry access.   |
+| `format`            | No       | `spdx-json` | SBOM format to generate. Supported values are `spdx-json` and `cyclonedx-json`. |
 
 If either `registry-username` or `registry-password` is provided, both must be
 provided. For GHCR images, use `${{ github.actor }}` and
@@ -58,10 +58,10 @@ provided. For GHCR images, use `${{ github.actor }}` and
 
 The selected `format` controls the Cosign predicate type automatically:
 
-| Format | Cosign predicate type |
-| --- | --- |
-| `spdx-json` | `spdxjson` |
-| `cyclonedx-json` | `cyclonedx` |
+| Format           | Cosign predicate type |
+|------------------|-----------------------|
+| `spdx-json`      | `spdxjson`            |
+| `cyclonedx-json` | `cyclonedx`           |
 
 ## Permissions
 
@@ -70,8 +70,8 @@ GHCR images, it also needs `packages: write` so Cosign can push the attestation.
 
 ## Outputs
 
-| Name | Description |
-| --- | --- |
+| Name        | Description                                    |
+|-------------|------------------------------------------------|
 | `sbom-file` | Path to the generated SBOM file on the runner. |
 
 ## Image references
