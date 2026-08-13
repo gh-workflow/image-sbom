@@ -1,0 +1,74 @@
+name: "CI: Release"
+
+"on":
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Run super-linter
+    uses: ./.github/workflows/CI_lint-super-linter.yml
+    permissions:
+      contents: read
+
+  live-test:
+    name: Run live test
+    uses: ./.github/workflows/ci_live-test.yml
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+
+  release:
+    name: Create GitHub release
+    needs:
+      - lint
+      - live-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Move short major release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          major_tag="${RELEASE_TAG%%.*}"
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${major_tag}" >/dev/null 2>&1; then
+            gh api \
+              --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/git/refs/tags/${major_tag}" \
+              -f sha="${TARGET_SHA}" \
+              -F force=true
+          else
+            gh api \
+              --method POST \
+              "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f ref="refs/tags/${major_tag}" \
+              -f sha="${TARGET_SHA}"
+          fi
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$TARGET_SHA" \
+            --verify-tag \
+            --generate-notes
