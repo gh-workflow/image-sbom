@@ -1,0 +1,8 @@
+FORMATTERS_DISABLE_ERRORS: false
+
+# trivy
+REPOSITORY_TRIVY_ARGUMENTS: "--ignorefile ./.trivyignore.yaml"
+
+# zizmor
+ACTION_ZIZMOR_UNSECURED_ENV_VARIABLES:
+  - GITHUB_TOKEN

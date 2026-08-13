@@ -1,0 +1,24 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "ignorePaths": ["**/.git/**"],
+  "words": [
+    "HEALTHCHECK",
+    "SPDXID",
+    "Syft",
+    "ZIZMOR",
+    "anchore",
+    "cooldown",
+    "cyclonedx",
+    "dsse",
+    "esac",
+    "fromjson",
+    "ignorefile",
+    "mktemp",
+    "pipefail",
+    "rekor",
+    "sigstore",
+    "spdxjson",
+    "zizmor"
+  ]
+}
