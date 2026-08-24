@@ -19,8 +19,36 @@ concurrency:
 
 jobs:
   sbom-attestation:
-    name: Build image and attest SBOM
+    name: Build image and attest SBOM (${{ matrix.case }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - case: image-manifest
+            platforms: linux/amd64
+            provenance: "false"
+            expected-media: manifest
+            expected-images: "1"
+            expected-non-runnable: "0"
+          - case: single-image-index
+            platforms: linux/amd64
+            provenance: mode=max
+            expected-media: index
+            expected-images: "1"
+            expected-non-runnable: "1"
+          - case: multi-image-index
+            platforms: linux/amd64,linux/arm64
+            provenance: "false"
+            expected-media: index
+            expected-images: "2"
+            expected-non-runnable: "0"
+          - case: multi-image-index-with-attestations
+            platforms: linux/amd64,linux/arm64
+            provenance: mode=max
+            expected-media: index
+            expected-images: "2"
+            expected-non-runnable: "2"
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -32,10 +60,11 @@ jobs:
         env:
           RUN_ID: ${{ github.run_id }}
           REPOSITORY: ${{ github.repository }}
+          TEST_CASE: ${{ matrix.case }}
         run: |
           set -euo pipefail
           image="ghcr.io/${REPOSITORY,,}-live-test"
-          tag="${image}:${RUN_ID}"
+          tag="${image}:${RUN_ID}-${TEST_CASE}"
 
           {
             echo "context=tests/live-image"
@@ -50,12 +79,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
       - name: Build and push test image
         id: build
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: ${{ steps.image.outputs.context }}
+          platforms: ${{ matrix.platforms }}
           push: true
+          provenance: ${{ matrix.provenance }}
           sbom: false
           tags: ${{ steps.image.outputs.tag }}
 
@@ -67,43 +104,11 @@ jobs:
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify SBOM file
-        env:
-          SBOM_DIR: ${{ steps.sbom.outputs.sbom-dir }}
-        run: |
-          set -euo pipefail
-          find "${SBOM_DIR}" -type f -name '*.spdx.json' -print -quit \
-            | xargs jq -e '.SPDXID == "SPDXRef-DOCUMENT"' >/dev/null
-
-      - name: Verify attestation exists
+      - name: Verify SBOM attestations
         env:
           IMAGE: ${{ steps.image.outputs.image }}@${{ steps.build.outputs.digest }}
-        run: |
-          set -euo pipefail
-          image_repo="${IMAGE%@sha256:*}"
-          resolved_image="$(
-            docker buildx imagetools inspect --raw "${IMAGE}" \
-              | jq -r --arg image_repo "${image_repo}" '
-                .manifests[]
-                | select(.platform.os != null and .platform.architecture != null)
-                | select(.platform.os != "unknown" and .platform.architecture != "unknown")
-                | select(.annotations["vnd.docker.reference.type"] != "attestation-manifest")
-                | "\($image_repo)@\(.digest)"
-              ' \
-              | head -n 1
-          )"
-          if [[ -z "${resolved_image}" ]]; then
-            echo "No runnable image manifest found for ${IMAGE}." >&2
-            exit 1
-          fi
-
-          attestation_file="${RUNNER_TEMP}/attestations.json"
-          cosign download attestation "${resolved_image}" > "${attestation_file}"
-          jq -e '
-            select(
-              .dsseEnvelope.payload
-              | @base64d
-              | fromjson
-              | .predicate.SPDXID == "SPDXRef-DOCUMENT"
-            )
-          ' "${attestation_file}" >/dev/null
+          SBOM_DIR: ${{ steps.sbom.outputs.sbom-dir }}
+          EXPECTED_MEDIA: ${{ matrix.expected-media }}
+          EXPECTED_IMAGES: ${{ matrix.expected-images }}
+          EXPECTED_NON_RUNNABLE: ${{ matrix.expected-non-runnable }}
+        run: scripts/verify-live-case.sh
