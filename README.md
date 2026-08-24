@@ -5,7 +5,7 @@
 [![Immutable Releases](https://img.shields.io/badge/releases-immutable-blue?labelColor=333)](https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/immutable-releases)
 [![Tests](https://img.shields.io/github/actions/workflow/status/gh-workflow/image-sbom/.github/workflows/ci_live-test.yml?branch=main&label=test&style=flat-square)](https://github.com/gh-workflow/image-sbom/actions/workflows/ci_live-test.yml)
 
-Generate an SBOM for a container image and attach it to the image as a Cosign attestation.
+Generate an SBOM for each resolved container image and attach it as a Cosign attestation.
 
 This action is useful when `docker/build-push-action` BuildKit SBOM generation hits the attestation size limit, for
 example:
@@ -76,9 +76,9 @@ GHCR images, it also needs `packages: write` so Cosign can push the attestation.
 
 ## Outputs
 
-| Name        | Description                                    |
-|-------------|------------------------------------------------|
-| `sbom-file` | Path to the generated SBOM file on the runner. |
+| Name       | Description                                    |
+|------------|------------------------------------------------|
+| `sbom-dir` | Directory containing the generated SBOM files. |
 
 ## Image references
 

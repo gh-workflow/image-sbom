@@ -25,15 +25,19 @@ inputs:
     default: spdx-json
 
 outputs:
-  sbom-file:
-    description: Path to the generated SBOM file on the runner.
-    value: ${{ steps.paths.outputs.SBOM_FILE }}
+  sbom-dir:
+    description: Directory containing the generated SBOM files.
+    value: ${{ steps.paths.outputs.SBOM_DIR }}
 
 runs:
   using: composite
   steps:
     - name: Install Cosign
       uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+    - name: Install Syft
+      id: syft
+      uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
 
     - name: Prepare paths
       id: paths
@@ -45,11 +49,13 @@ runs:
         sbom_dir="$(mktemp -d "${RUNNER_TEMP}/image-sbom.XXXXXX")"
         case "${FORMAT}" in
           spdx-json)
-            echo "SBOM_FILE=${sbom_dir}/sbom.spdx.json" >>"${GITHUB_OUTPUT}"
+            echo "SBOM_DIR=${sbom_dir}" >>"${GITHUB_OUTPUT}"
+            echo "SBOM_EXT=spdx.json" >>"${GITHUB_OUTPUT}"
             echo "PREDICATE_TYPE=spdxjson" >>"${GITHUB_OUTPUT}"
             ;;
           cyclonedx-json)
-            echo "SBOM_FILE=${sbom_dir}/sbom.cyclonedx.json" >>"${GITHUB_OUTPUT}"
+            echo "SBOM_DIR=${sbom_dir}" >>"${GITHUB_OUTPUT}"
+            echo "SBOM_EXT=cyclonedx.json" >>"${GITHUB_OUTPUT}"
             echo "PREDICATE_TYPE=cyclonedx" >>"${GITHUB_OUTPUT}"
             ;;
           *)
@@ -58,51 +64,31 @@ runs:
             ;;
         esac
 
-    - name: Generate SBOM
-      uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-      with:
-        image: ${{ inputs.image }}
-        registry-username: ${{ inputs.registry-username }}
-        registry-password: ${{ inputs.registry-password }}
-        format: ${{ inputs.format }}
-        output-file: ${{ steps.paths.outputs.SBOM_FILE }}
-        upload-artifact: false
-        upload-release-assets: false
-
-    - name: Attest SBOM
+    - name: Resolve runnable image manifests
+      id: resolve
       shell: bash
       env:
         IMAGE: ${{ inputs.image }}
+        SBOM_DIR: ${{ steps.paths.outputs.SBOM_DIR }}
+        REGISTRY_USERNAME: ${{ inputs.registry-username }}
+        REGISTRY_PASSWORD: ${{ inputs.registry-password }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        bash "${ACTION_PATH}/scripts/resolve-image-manifests.sh"
+        echo "RESOLVED_IMAGES_FILE=${SBOM_DIR}/resolved-images.txt" >>"${GITHUB_OUTPUT}"
+
+    - name: Generate and attest SBOM
+      id: generate
+      shell: bash
+      env:
+        FORMAT: ${{ inputs.format }}
         PREDICATE_TYPE: ${{ steps.paths.outputs.PREDICATE_TYPE }}
         REGISTRY_USERNAME: ${{ inputs.registry-username }}
         REGISTRY_PASSWORD: ${{ inputs.registry-password }}
-        SBOM_FILE: ${{ steps.paths.outputs.SBOM_FILE }}
-      run: |
-        set -euo pipefail
-        signing_config="${RUNNER_TEMP}/cosign-signing-config.json"
-        cosign signing-config create \
-          --with-default-services \
-          --no-default-rekor \
-          --out "${signing_config}"
-
-        cosign_args=(
-          attest
-          --yes
-          --predicate "${SBOM_FILE}"
-          --type "${PREDICATE_TYPE}"
-          --signing-config "${signing_config}"
-        )
-
-        if [[ -n "${REGISTRY_USERNAME}" || -n "${REGISTRY_PASSWORD}" ]]; then
-          if [[ -z "${REGISTRY_USERNAME}" || -z "${REGISTRY_PASSWORD}" ]]; then
-            echo "::error::registry-username and registry-password must be provided together."
-            exit 1
-          fi
-
-          cosign_args+=(
-            --registry-username "${REGISTRY_USERNAME}"
-            --registry-password "${REGISTRY_PASSWORD}"
-          )
-        fi
-
-        cosign "${cosign_args[@]}" "${IMAGE}"
+        RESOLVED_IMAGES_FILE: ${{ steps.resolve.outputs.RESOLVED_IMAGES_FILE }}
+        SBOM_DIR: ${{ steps.paths.outputs.SBOM_DIR }}
+        SBOM_EXT: ${{ steps.paths.outputs.SBOM_EXT }}
+        SYFT_CMD: ${{ steps.syft.outputs.cmd }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: bash "${ACTION_PATH}/scripts/generate-attest-sbom.sh"
