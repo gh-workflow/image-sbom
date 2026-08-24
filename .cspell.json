@@ -3,11 +3,14 @@
   "language": "en",
   "ignorePaths": ["**/.git/**"],
   "words": [
+    "Buildx",
     "HEALTHCHECK",
+    "SHFMT",
     "SPDXID",
     "Syft",
     "ZIZMOR",
     "anchore",
+    "buildx",
     "cooldown",
     "cyclonedx",
     "dsse",
@@ -17,6 +20,7 @@
     "mktemp",
     "pipefail",
     "rekor",
+    "shfmt",
     "sigstore",
     "spdxjson",
     "zizmor"
