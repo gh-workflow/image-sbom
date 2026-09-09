@@ -8,9 +8,7 @@
   "conditions": {
     "ref_name": {
       "exclude": [],
-      "include": [
-        "~ALL"
-      ]
+      "include": ["~ALL"]
     }
   },
   "rules": [
