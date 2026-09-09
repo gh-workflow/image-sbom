@@ -87,6 +87,11 @@ from local container runtimes or registries, but Cosign needs a registry image
 reference when uploading the attestation. A digest reference is recommended so
 the SBOM is attached to the exact image that was built.
 
+## Development
+
+See the [development documentation](docs/development.md) for developer
+information.
+
 ## License
 
 MIT

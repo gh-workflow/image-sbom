@@ -1,0 +1,22 @@
+{
+  "id": 20802453,
+  "name": "Commits must be signed",
+  "target": "branch",
+  "source_type": "Repository",
+  "source": "gh-workflow/image-sbom",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "exclude": [],
+      "include": [
+        "~ALL"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "type": "required_signatures"
+    }
+  ],
+  "bypass_actors": []
+}
