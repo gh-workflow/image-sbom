@@ -4,19 +4,36 @@ name: "CI: Release"
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  validate-release-tag:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate tag
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$REF" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "CI: Release must run from a v<major>.<minor>.<patch> tag, got: $REF" >&2
+            exit 1
+          fi
+
   lint:
     name: Run super-linter
+    needs: validate-release-tag
     uses: ./.github/workflows/CI_lint-super-linter.yml
     permissions:
       contents: read
 
   live-test:
     name: Run live test
+    needs: validate-release-tag
     uses: ./.github/workflows/ci_live-test.yml
     permissions:
       contents: read
@@ -26,6 +43,7 @@ jobs:
   release:
     name: Create GitHub release
     needs:
+      - validate-release-tag
       - lint
       - live-test
     runs-on: ubuntu-latest

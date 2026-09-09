@@ -1,4 +1,4 @@
-name: "CI: Dependabot auto release"
+name: "CI: Dependabot release trigger"
 
 "on":
   push:
@@ -9,14 +9,15 @@ permissions:
   contents: read
 
 concurrency:
-  group: dependabot-auto-release
+  group: dependabot-release-trigger
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Create release for Dependabot merge
+  tag-and-trigger-release:
+    name: Create tag and trigger release for Dependabot merge
     runs-on: ubuntu-latest
     permissions:
+      actions: write
       contents: write
       pull-requests: read
     steps:
@@ -49,26 +50,26 @@ jobs:
 
           if [[ -z "$pr_json" ]]; then
             echo "No merged Dependabot pull request found for ${TARGET_SHA}."
-            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "create_tag=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           {
-            echo "release=true"
+            echo "create_tag=true"
             echo "pr_number=$(jq -r '.number' <<< "$pr_json")"
             echo "pr_title=$(jq -r '.title' <<< "$pr_json")"
           } >> "$GITHUB_OUTPUT"
 
       - name: Checkout
-        if: steps.pr.outputs.release == 'true'
+        if: steps.pr.outputs.create_tag == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Resolve next tag
-        id: release
-        if: steps.pr.outputs.release == 'true'
+      - name: Resolve next version tag
+        id: tag
+        if: steps.pr.outputs.create_tag == 'true'
         run: |
           set -euo pipefail
           latest_tag="$(
@@ -81,64 +82,38 @@ jobs:
           )"
 
           if [[ -z "$latest_tag" ]]; then
-            release_tag="v0.0.1"
+            version_tag="v0.0.1"
           else
             version="${latest_tag#v}"
             IFS=. read -r major minor patch <<< "$version"
-            release_tag="v${major}.${minor}.$((patch + 1))"
+            version_tag="v${major}.${minor}.$((patch + 1))"
           fi
 
           {
-            echo "release_tag=${release_tag}"
-            echo "major_tag=${release_tag%%.*}"
+            echo "version_tag=${version_tag}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create release tag
-        if: steps.pr.outputs.release == 'true'
+      - name: Create version tag
+        if: steps.pr.outputs.create_tag == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+          VERSION_TAG: ${{ steps.tag.outputs.version_tag }}
           TARGET_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           gh api \
             --method POST \
             "repos/${GITHUB_REPOSITORY}/git/refs" \
-            -f ref="refs/tags/${RELEASE_TAG}" \
+            -f ref="refs/tags/${VERSION_TAG}" \
             -f sha="${TARGET_SHA}"
 
-      - name: Move short major release tag
-        if: steps.pr.outputs.release == 'true'
+      - name: Run release workflow for tag
+        if: steps.pr.outputs.create_tag == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          MAJOR_TAG: ${{ steps.release.outputs.major_tag }}
-          TARGET_SHA: ${{ github.sha }}
+          VERSION_TAG: ${{ steps.tag.outputs.version_tag }}
         run: |
           set -euo pipefail
-          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${MAJOR_TAG}" >/dev/null 2>&1; then
-            gh api \
-              --method PATCH \
-              "repos/${GITHUB_REPOSITORY}/git/refs/tags/${MAJOR_TAG}" \
-              -f sha="${TARGET_SHA}" \
-              -F force=true
-          else
-            gh api \
-              --method POST \
-              "repos/${GITHUB_REPOSITORY}/git/refs" \
-              -f ref="refs/tags/${MAJOR_TAG}" \
-              -f sha="${TARGET_SHA}"
-          fi
-
-      - name: Create GitHub release
-        if: steps.pr.outputs.release == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
-          TARGET_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          gh release create "$RELEASE_TAG" \
+          gh workflow run ci_release.yml \
             --repo "$GITHUB_REPOSITORY" \
-            --target "$TARGET_SHA" \
-            --verify-tag \
-            --generate-notes
+            --ref "$VERSION_TAG"
