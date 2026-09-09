@@ -33,6 +33,6 @@ jobs:
           gh pr merge "$PR_NUMBER" \
             --repo "$GITHUB_REPOSITORY" \
             --auto \
-            --squash \
+            --merge \
             --delete-branch \
             --match-head-commit "$HEAD_SHA"
