@@ -7,18 +7,30 @@ GitHub repository before using this project for development.
 
 ## Linting
 
-Keep changes compliant with both linters.
+Changes must satisfy both linters.
 
-[Super-Linter](https://github.com/super-linter/super-linter) provides the
-project's fast, reasonably strict baseline checks. It runs automatically for
-pull requests and pushes, including the release workflow.
+<!-- markdownlint-disable MD013 -->
+| Workflow                              | When it runs                                                     | What to do                                                      |
+|---------------------------------------|------------------------------------------------------------------|-----------------------------------------------------------------|
+| **CI: lint (super-linter)**           | Automatically for pull requests, pushes to `main`, and releases. | Nothing: fix any reported issues in your branch.                |
+| **CI: lint (self-hosted megalinter)** | Manually.                                                        | Run it before merging changes that may need its broader checks. |
+<!-- markdownlint-enable MD013 -->
 
-[MegaLinter](https://github.com/oxsecurity/megalinter) provides broader, more
-strict checks and is run on demand through **CI: lint (self-hosted
-megalinter)**. Prefer the `self-hosted` runner option after starting a
-self-hosted runner: its cached MegaLinter image avoids downloading the large
-image again on each run. The first run downloads the image; subsequent runs
-normally take about one to two minutes.
+### Run MegaLinter
+
+1. Go to **Actions** → **CI: lint (self-hosted megalinter)** → **Run
+   workflow**.
+2. Select the branch to check.
+3. Select the runner:
+   - `self-hosted` when an appropriate runner is available. Its cached
+     MegaLinter image makes later runs take about one to two minutes.
+   - `ubuntu-latest` otherwise. It downloads the large image for each run.
+4. Select `fix_mode`:
+   - `pull_request` (default) creates or updates a `lint-autofix/<branch>` PR
+     with MegaLinter's automatic fixes.
+   - `none` reports issues without creating a fix PR.
+
+The run uploads its reports as the **MegaLinter reports** artifact.
 
 ## Dependency updates and releases
 
