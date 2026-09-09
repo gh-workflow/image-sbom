@@ -11,6 +11,10 @@ name: "CI: Dependabot auto merge"
 permissions:
   contents: read
 
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   enable-auto-merge:
     name: Enable auto-merge
@@ -20,6 +24,7 @@ jobs:
       !github.event.pull_request.draft
     runs-on: ubuntu-latest
     permissions:
+      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -36,3 +41,38 @@ jobs:
             --merge \
             --delete-branch \
             --match-head-commit "$HEAD_SHA"
+
+      - name: Trigger tag-and-release workflow after merge
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          for _ in {1..180}; do
+            pr_json="$(
+              gh pr view "$PR_NUMBER" \
+                --repo "$GITHUB_REPOSITORY" \
+                --json state,mergeCommit
+            )"
+            state="$(jq -r '.state' <<< "$pr_json")"
+
+            if [[ "$state" == "MERGED" ]]; then
+              merge_sha="$(jq -r '.mergeCommit.oid' <<< "$pr_json")"
+              gh workflow run ci_dependabot-release-trigger.yml \
+                --repo "$GITHUB_REPOSITORY" \
+                --ref "$DEFAULT_BRANCH" \
+                -f target_sha="$merge_sha"
+              exit 0
+            fi
+
+            if [[ "$state" == "CLOSED" ]]; then
+              echo "Pull request #${PR_NUMBER} closed without merging." >&2
+              exit 1
+            fi
+
+            sleep 5
+          done
+
+          echo "Timed out waiting for pull request #${PR_NUMBER} to merge." >&2
+          exit 1
