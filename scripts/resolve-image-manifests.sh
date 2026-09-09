@@ -28,7 +28,19 @@ if [[ -n "${REGISTRY_USERNAME}" || -n "${REGISTRY_PASSWORD}" ]]; then
     --password-stdin <<<"${REGISTRY_PASSWORD}"
 fi
 
-inspect_json="$(docker buildx imagetools inspect --raw "${IMAGE}")"
+# A registry may acknowledge a push before its manifest is readable; retry the
+# inspection briefly so a just-pushed image can become available.
+for attempt in {1..5}; do
+  if inspect_json="$(docker buildx imagetools inspect --raw "${IMAGE}" 2>&1)"; then
+    break
+  fi
+  if ((attempt == 5)); then
+    printf '%s\n' "${inspect_json}" >&2
+    exit 1
+  fi
+  sleep 5
+done
+
 media_type="$(jq -r '.mediaType // ""' <<<"${inspect_json}")"
 
 case "${media_type}" in
