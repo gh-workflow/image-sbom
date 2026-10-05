@@ -92,6 +92,21 @@ the SBOM is attached to the exact image that was built.
 See the [development documentation](docs/development.md) for developer
 information.
 
+## Inspect published SBOMs
+
+This repository includes an optional helper to read an SPDX SBOM attested by this action. It requires Docker with
+Buildx, [`jq`](https://jqlang.org/), and [Cosign](https://docs.sigstore.dev/cosign/system_config/installation/):
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/gh-workflow/image-sbom/v1/scripts/show-sbom.sh
+chmod +x show-sbom.sh
+./show-sbom.sh <image-reference> --packages
+```
+
+Replace `<image-reference>` with the image tag or digest to inspect. Omit `--packages` to print the complete SPDX
+document. For a multi-platform image, use `--platform linux/arm64` to select a platform other than the default
+`linux/amd64`.
+
 ## License
 
 MIT

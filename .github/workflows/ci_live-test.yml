@@ -112,3 +112,16 @@ jobs:
           EXPECTED_IMAGES: ${{ matrix.expected-images }}
           EXPECTED_NON_RUNNABLE: ${{ matrix.expected-non-runnable }}
         run: scripts/verify-live-case.sh
+
+      - name: Test SBOM reader
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}@${{ steps.build.outputs.digest }}
+          EXPECTED_IMAGES: ${{ matrix.expected-images }}
+        run: |
+          set -euo pipefail
+          scripts/show-sbom.sh "${IMAGE}" --packages |
+            awk -F '\t' '$1 == "busybox" { found = 1 } END { exit !found }'
+          if [[ "${EXPECTED_IMAGES}" -gt 1 ]]; then
+            scripts/show-sbom.sh "${IMAGE}" --platform linux/arm64 --packages |
+              awk -F '\t' '$1 == "busybox" { found = 1 } END { exit !found }'
+          fi
