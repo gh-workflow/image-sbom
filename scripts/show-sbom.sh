@@ -114,7 +114,8 @@ SPDX_SBOM="$(
 if [[ "${PACKAGES_ONLY}" == true ]]; then
   printf 'NAME\tVERSION\tSUPPLIER\n'
   printf '%s\n' "${SPDX_SBOM}" |
-    jq -r '.packages[] | [.name, .versionInfo, (.supplier // "")] | @tsv'
+    jq -r '.packages[] | [.name, .versionInfo, (.supplier // "")] | @tsv' |
+    sort -u
 else
   printf '%s\n' "${SPDX_SBOM}"
 fi
