@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: show-sbom.sh <image> [--packages] [--platform <platform>]
+Usage: show-sbom.sh [--packages] [--platform <platform>] <image>
 
 Print the SPDX SBOM attested to a published image.
 

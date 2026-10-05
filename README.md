@@ -100,7 +100,7 @@ Buildx, [`jq`](https://jqlang.org/), and [Cosign](https://docs.sigstore.dev/cosi
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/gh-workflow/image-sbom/v1/scripts/show-sbom.sh
 chmod +x show-sbom.sh
-./show-sbom.sh <image-reference> --packages
+./show-sbom.sh --packages <image-reference>
 ```
 
 Replace `<image-reference>` with the image tag or digest to inspect. Omit `--packages` to print the complete SPDX
