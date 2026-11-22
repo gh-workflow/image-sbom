@@ -1,10 +1,5 @@
 # Development
 
-## Repository rulesets
-
-Import the rulesets in [`.github/rulesets/`](../.github/rulesets/) into the
-GitHub repository before using this project for development.
-
 ## Linting
 
 Changes must satisfy both linters.
