@@ -10,8 +10,6 @@ name: "CI: live test"
 
 permissions:
   contents: read
-  id-token: write
-  packages: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -28,6 +26,10 @@ jobs:
     name: Build image and attest SBOM (${{ matrix.case }})
     runs-on: ubuntu-latest
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
     strategy:
       fail-fast: false
       matrix:
