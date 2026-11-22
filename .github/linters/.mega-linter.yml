@@ -1,4 +1,5 @@
 FORMATTERS_DISABLE_ERRORS: false
+LINTER_RULES_PATH: .github/linters
 
 # jscpd
 COPYPASTE_JSCPD_ARGUMENTS: "--threshold 10"
@@ -7,7 +8,7 @@ COPYPASTE_JSCPD_ARGUMENTS: "--threshold 10"
 BASH_SHFMT_ARGUMENTS: "--indent 2 -case-indent"
 
 # trivy
-REPOSITORY_TRIVY_ARGUMENTS: "--ignorefile ./.trivyignore.yaml"
+REPOSITORY_TRIVY_ARGUMENTS: "--ignorefile .github/linters/.trivyignore.yaml"
 
 # zizmor
 ACTION_ZIZMOR_UNSECURED_ENV_VARIABLES:
